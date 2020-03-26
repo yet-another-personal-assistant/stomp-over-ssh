@@ -8,7 +8,7 @@ import stomp
 _LOGGER = logging.getLogger(__name__)
 
 
-class SshBasedTransport:
+class SshBasedTransport(stomp.transport.BaseTransport):
     """
     STOMP transport that utilizes ssh connection instead of socket.
     """
@@ -62,3 +62,18 @@ class SshBasedTransport:
     def disconnect_socket(self):
         self.channel.close()
         self.client.close()
+
+
+class SshBasedConnection(stomp.Connection12):
+    """
+    STOMP connection that uses SshBasedTransport.
+    """
+
+    def __init__(self, hostname, port, username, keyfile,
+                 heartbeats=(0,0),
+                 auto_content_length=True,
+                 heart_beat_receive_scale=1.5):
+        transport = SshBasedTransport(hostname, port, username, keyfile)
+        stomp.connect.BaseConnection.__init__(self, transport)
+        stomp.protocol.Protocol12.__init__(self, transport, heartbeats, auto_content_length,
+                                           heart_beat_receive_scale=heart_beat_receive_scale)

@@ -19,6 +19,7 @@ class SshTransportTest(unittest.TestCase):
                                     "username", 'files/test.key')
 
     def test_create(self):
+        self.assertIsInstance(self.tr, stomp.transport.BaseTransport)
         self.assertFalse(self.tr.is_connected())
 
     def test_vhost(self):
