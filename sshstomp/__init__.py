@@ -4,8 +4,6 @@ import time
 import paramiko
 import stomp
 
-import pdb
-
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,6 +23,7 @@ class SshBasedTransport:
         self.vhost = f"{username}@{hostname}:{port}"
         self.channel = None
         self.key = key
+        self.file = None
 
     def is_connected(self):
         return self.channel is not None and not self.channel.closed
@@ -42,6 +41,7 @@ class SshBasedTransport:
                 if self.channel is None or self.channel.closed:
                     self.client.get_transport().set_keepalive(60)
                     self.channel = self.client.invoke_shell()
+                    self.file = self.channel.makefile('b+')
             except paramiko.ssh_exception.SSHException as ex:
                 time.sleep(sleep_time)
                 if sleep_time < 100:
@@ -50,13 +50,10 @@ class SshBasedTransport:
     def send(self, encoded_frame):
         if not self.is_connected():
             raise stomp.exception.NotConnectedException()
-        self.channel.sendall(encoded_frame)
-        self.channel.send(b'\n')
-        return len(encoded_frame)
+        self.file.write(encoded_frame)
 
     def receive(self):
-        result = self.channel.recv(4096)
-        return result
+        return self.file.read()
 
     def cleanup(self):
         self.channel.close()

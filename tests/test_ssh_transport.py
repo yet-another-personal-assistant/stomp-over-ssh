@@ -1,23 +1,12 @@
-import io
-import logging
-import threading
 import unittest
-import unittest.mock
-
-from contextlib import contextmanager
-from functools import wraps
 
 import mockssh
-import paramiko
 import stomp
 
 from sshstomp import SshBasedTransport
 
 
 _USERS = {'username': 'files/test.key'}
-
-
-_LOGGER = logging.getLogger(__name__)
 
 
 class SshTransportTest(unittest.TestCase):
@@ -52,9 +41,7 @@ class SshTransportTest(unittest.TestCase):
         self.tr.attempt_connection()
 
         data = b'echo hello, world'
-        result = self.tr.send(data)
-
-        self.assertEqual(result, len(data))
+        self.tr.send(data)
 
     def test_recv(self):
         self.tr.attempt_connection()
