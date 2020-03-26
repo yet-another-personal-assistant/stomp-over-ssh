@@ -65,16 +65,15 @@ class SshBasedTransport(stomp.transport.BaseTransport):
         self.client.close()
 
 
-class SshBasedConnection(stomp.Connection12):
+class Connection(stomp.Connection12):
     """
-    STOMP connection that uses SshBasedTransport.
+    STOMP connection that uses custom transport
     """
 
-    def __init__(self, hostname, port, username, keyfile,
+    def __init__(self, transport,
                  heartbeats=(0,0),
                  auto_content_length=True,
                  heart_beat_receive_scale=1.5):
-        transport = SshBasedTransport(hostname, port, username, keyfile)
         stomp.connect.BaseConnection.__init__(self, transport)
         stomp.protocol.Protocol12.__init__(self, transport, heartbeats, auto_content_length,
                                            heart_beat_receive_scale=heart_beat_receive_scale)

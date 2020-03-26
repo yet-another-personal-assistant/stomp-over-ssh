@@ -10,7 +10,7 @@ import time
 import paramiko
 import stomp
 
-from sshstomp import SshBasedConnection
+from sshstomp import Connection, SshBasedTransport
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -78,8 +78,8 @@ def set_message_chat_id(chat_id):
 
 
 def main(host, port, user, keyfile):
-    conn = SshBasedConnection(host, port, user, keyfile,
-                              heartbeats=(120000,180000))
+    transport = SshBasedTransport(host, port, user, keyfile)
+    conn = Connection(transport, heartbeats=(120000,180000))
     listener = MyListener(conn)
     conn.set_listener('', listener)
     conn.connect()
