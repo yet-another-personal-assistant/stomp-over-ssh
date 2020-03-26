@@ -23,7 +23,6 @@ class SshBasedTransport(stomp.transport.BaseTransport):
         self.vhost = f"{username}@{hostname}:{port}"
         self.channel = None
         self.key = key
-        self.file = None
 
     def is_connected(self):
         return self.channel is not None and not self.channel.closed
@@ -41,7 +40,7 @@ class SshBasedTransport(stomp.transport.BaseTransport):
                 if self.channel is None or self.channel.closed:
                     self.client.get_transport().set_keepalive(60)
                     self.channel = self.client.invoke_shell()
-                    self.file = self.channel.makefile('b+')
+                    time.sleep(0.2)
             except paramiko.ssh_exception.SSHException as ex:
                 time.sleep(sleep_time)
                 if sleep_time < 100:
@@ -50,10 +49,12 @@ class SshBasedTransport(stomp.transport.BaseTransport):
     def send(self, encoded_frame):
         if not self.is_connected():
             raise stomp.exception.NotConnectedException()
-        self.file.write(encoded_frame)
+        self.channel.sendall(encoded_frame)
 
     def receive(self):
-        return self.file.read()
+        result = self.channel.recv(4096)
+        _LOGGER.debug("Got %s", result)
+        return result
 
     def cleanup(self):
         self.channel.close()

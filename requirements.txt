@@ -1,2 +1,2 @@
 paramiko
-stomp.py
+git+https://github.com/aragaer/stomp.py.git@heartbeat
