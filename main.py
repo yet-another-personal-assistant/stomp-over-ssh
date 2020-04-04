@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import configparser
 import logging
 import json
 import os
@@ -14,6 +15,24 @@ from sshstomp import Connection, SshBasedTransport
 
 
 _LOGGER = logging.getLogger(__name__)
+
+
+class KeepAlivesFilter:
+    def filter(self, record):
+        return 'keepalive@' not in record.msg
+
+
+def setup_logging(level, logfile):
+    paramiko.util.get_logger('paramiko.transport').addFilter(KeepAlivesFilter())
+    log_format = "%(asctime)-8s:%(levelname)5s:%(name)s: %(message)s"
+    logging.basicConfig(stream=sys.stderr,
+                        level=level,
+                        format=log_format,
+                        datefmt="%H:%M:%S")
+    if logfile is not None:
+        handler = logging.FileHandler(logfile)
+        handler.setFormatter(logging.Formatter(log_format))
+        logging.getLogger('').addHandler(handler)
 
 
 class MyListener(stomp.ConnectionListener):
@@ -67,17 +86,35 @@ def make_message(text, chat_id=None):
                        "text": text})
 
 
-class KeepAlivesFilter:
-    def filter(self, record):
-        return 'keepalive@' not in record.msg
-
-
 def set_message_chat_id(chat_id):
     global _CHAT_ID
     _CHAT_ID = chat_id
 
 
-def main(host, port, user, keyfile):
+def main(args):
+    config_file = args.config or "/etc/sshstomp/sshstomp.conf"
+    config_file = os.path.expanduser(config_file)
+
+    config = configparser.ConfigParser()
+    if os.path.exists(config_file):
+        config.read(config_file)
+        config = config['sshstomp']
+    else:
+        config.read_dict({})
+
+    log_file = args.log_file or config.get('log-file')
+    if args.debug or config.getboolean('debug', fallback=False):
+        setup_logging(logging.DEBUG, log_file)
+    else:
+        setup_logging(logging.INFO, log_file)
+
+    host = args.host or config['host']
+    port = args.port or config.getint('port')
+    user = args.user or config['user']
+    keyfile = os.path.expanduser(args.key or config['key'])
+    chat_id = args.chat_id or config['chat-id']
+    set_message_chat_id(chat_id)
+
     transport = SshBasedTransport(host, port, user, keyfile)
     conn = Connection(transport, heartbeats=(120000,180000))
     listener = MyListener(conn)
@@ -86,7 +123,7 @@ def main(host, port, user, keyfile):
     conn.send(body=make_message("я тут"), destination='tg')
     while True:
         try:
-            time.sleep(600+random.randint(-120, 120))
+            time.sleep(3600+random.randint(-600, 600))
             text = random.choice(["Привет",
                                   "Ой, приветик",
                                   "Чем занят?",
@@ -99,22 +136,15 @@ def main(host, port, user, keyfile):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(add_help=False)
-    parser.add_argument('-h', '--host', required=True)
-    parser.add_argument('-p', '--port', required=True, type=int)
-    parser.add_argument('-k', '--key', required=True)
-    parser.add_argument('-u', '--user', required=True)
-    parser.add_argument('-c', '--chat-id', required=True, type=int)
-    logging.basicConfig(stream=sys.stderr,
-                        level=logging.DEBUG,
-                        format="%(asctime)-8s:%(levelname)5s:%(name)s: %(message)s",
-                        datefmt="%H:%M:%S")
-    paramiko.util.get_logger('paramiko.transport').addFilter(KeepAlivesFilter())
-    handler = logging.FileHandler('my_stomp.log')
-    handler.setFormatter(logging.Formatter("%(asctime)-8s:%(levelname)5s:%(name)s: %(message)s"))
-    logging.getLogger('').addHandler(handler)
+    parser.add_argument('-h', '--host')
+    parser.add_argument('-p', '--port', type=int)
+    parser.add_argument('-k', '--key')
+    parser.add_argument('-u', '--user')
+    parser.add_argument('--chat-id', type=int)
+    parser.add_argument('-c', '--config')
+    parser.add_argument('-d', '--debug', action='store_true')
+    parser.add_argument('-o', '--log-file')
 
     args = parser.parse_args()
 
-    set_message_chat_id(args.chat_id)
-
-    main(args.host, args.port, args.user, os.path.expanduser(args.key))
+    main(args)
