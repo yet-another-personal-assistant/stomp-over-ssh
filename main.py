@@ -91,7 +91,7 @@ def set_message_chat_id(chat_id):
     _CHAT_ID = chat_id
 
 
-def main(args):
+def process_config(args):
     config_file = args.config or "/etc/sshstomp/sshstomp.conf"
     config_file = os.path.expanduser(config_file)
 
@@ -114,7 +114,11 @@ def main(args):
     keyfile = os.path.expanduser(args.key or config['key'])
     chat_id = args.chat_id or config['chat-id']
     set_message_chat_id(chat_id)
+    return host, port, user, keyfile
 
+
+def main(args):
+    host, port, user, keyfile = process_config(args)
     transport = SshBasedTransport(host, port, user, keyfile)
     conn = Connection(transport, heartbeats=(120000,180000))
     listener = MyListener(conn)
