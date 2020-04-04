@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Configuration file
 - Logging to file
+- Dockerfile
 ### Changed
 - Renamed SshBasedConnection to Connection
 - Connection now accepts any instance of Transport
