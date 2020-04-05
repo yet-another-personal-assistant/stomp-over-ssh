@@ -104,7 +104,7 @@ def process_config(args):
     config = get_config(args.config)
 
     log_file = coalesce(args.log_file, config.get('log-file', fallback=None))
-    if coalesce(args.debug, config.getboolean('debug', fallback=False)):
+    if args.debug or config.getboolean('debug', fallback=False):
         log_level = logging.DEBUG
     else:
         log_level = logging.INFO
