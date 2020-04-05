@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Renamed SshBasedConnection to Connection
 - Connection now accepts any instance of Transport
 - -c key is now shorthand for --config, not --chat-id
+### Fixed
+- Send replies to correct chat id, not to owner
 
 ## 0.1.0 - 2020-03-26
 ### Added

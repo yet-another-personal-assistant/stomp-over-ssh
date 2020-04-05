@@ -37,9 +37,10 @@ def setup_logging(level, logfile):
 
 class MyListener(stomp.ConnectionListener):
 
-    def __init__(self, conn):
+    def __init__(self, conn, chat_id):
         self.conn = conn
         self.done = False
+        self.chat_id = chat_id
 
     def on_error(self, headers, message):
         print('received an error', message)
@@ -60,7 +61,8 @@ class MyListener(stomp.ConnectionListener):
         if msg['from']['channel'] == 'tg':
             if msg['from']['user_id'] == msg['from']['chat_id']: # private message
                 self.conn.send(body=make_message(["Я не поняла",
-                                                  f"А что значит \"{msg['text']}\"?"]),
+                                                  f"А что значит \"{msg['text']}\"?"],
+                                                 chat_id=msg['from']['chat_id']),
                                destination='tg')
 
     def on_disconnected(self):
@@ -71,60 +73,59 @@ class MyListener(stomp.ConnectionListener):
             self.conn.connect()
             self.conn.send(body=make_message(random.choice(["Ой, что-то поломалось",
                                                             "Тут что-то сломалось",
-                                                            "Кажется, связь моргнула"])),
+                                                            "Кажется, связь моргнула"]),
+                                             chat_id=self.chat_id),
                            destination='tg')
 
 
-_CHAT_ID = None
-
-
-def make_message(text, chat_id=None):
-    if chat_id is None:
-        chat_id = _CHAT_ID
+def make_message(text, chat_id):
     return json.dumps({"from": {"channel": "brain", "name": "niege"},
                        "to": {"channel": "tg", "chat_id": chat_id},
                        "text": text})
 
 
-def set_message_chat_id(chat_id):
-    global _CHAT_ID
-    _CHAT_ID = chat_id
-
-
-def process_config(args):
-    config_file = args.config or "/etc/sshstomp/sshstomp.conf"
-    config_file = os.path.expanduser(config_file)
+def get_config(config_file_arg):
+    if config_file_arg is None:
+        config_file = "/stc/sshstomp/sshstomp.conf"
+    else:
+        config_file = os.path.expanduser(config_file_arg)
 
     config = configparser.ConfigParser()
     if os.path.exists(config_file):
         config.read(config_file)
-        config = config['sshstomp']
     else:
-        config.read_dict({})
+        config.read_dict({'sshstomp':{}})
 
-    log_file = args.log_file or config.get('log-file')
+    return config['sshstomp']
+
+
+def process_config(args):
+    config = get_config(args.config)
+
+    log_file = args.log_file or config.get('log-file', fallback=None)
     if args.debug or config.getboolean('debug', fallback=False):
-        setup_logging(logging.DEBUG, log_file)
+        log_level = logging.DEBUG
     else:
-        setup_logging(logging.INFO, log_file)
+        log_level = logging.INFO
+
+    setup_logging(log_level, log_file)
 
     host = args.host or config['host']
     port = args.port or config.getint('port')
     user = args.user or config['user']
     keyfile = os.path.expanduser(args.key or config['key'])
     chat_id = args.chat_id or config['chat-id']
-    set_message_chat_id(chat_id)
-    return host, port, user, keyfile
+    return host, port, user, keyfile, chat_id
 
 
 def main(args):
-    host, port, user, keyfile = process_config(args)
+    host, port, user, keyfile, owner = process_config(args)
     transport = SshBasedTransport(host, port, user, keyfile)
     conn = Connection(transport, heartbeats=(120000,180000))
-    listener = MyListener(conn)
+    listener = MyListener(conn, owner)
     conn.set_listener('', listener)
     conn.connect()
-    conn.send(body=make_message("я тут"), destination='tg')
+    conn.send(body=make_message("я тут", chat_id=owner), destination='tg')
     while True:
         try:
             time.sleep(3600+random.randint(-600, 600))
@@ -132,7 +133,8 @@ def main(args):
                                   "Ой, приветик",
                                   "Чем занят?",
                                   "Мне скучно"])
-            conn.send(body=make_message(text), destination='tg')
+            conn.send(body=make_message(text, chat_id=owner),
+                      destination='tg')
         except KeyboardInterrupt:
             break
     listener.done = True
