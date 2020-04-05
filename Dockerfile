@@ -1,4 +1,7 @@
-FROM python:3
+FROM python:3-slim
+
+RUN apt update
+RUN apt -y install git
 
 WORKDIR /usr/src/app
 
