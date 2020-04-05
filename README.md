@@ -67,8 +67,8 @@ The bot sends one of random messages with random intervals of about 1 hour.
 #### "Don't understand" messages
 
 When bot receives a message from telegram it replies with "Don't
-understand" and "What is <quote>?" This message sent back to the chat
-which was the source of initial message.
+understand" and "What is <quote>?" These messages are sent back to the
+chat which was the source of initial message.
 
 ### Custom components
 
