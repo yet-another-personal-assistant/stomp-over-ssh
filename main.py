@@ -30,7 +30,7 @@ def setup_logging(level, logfile):
                         format=log_format,
                         datefmt="%H:%M:%S")
     if logfile is not None:
-        handler = logging.FileHandler(logfile)
+        handler = logging.FileHandler(os.path.expanduser(logfile))
         handler.setFormatter(logging.Formatter(log_format))
         logging.getLogger('').addHandler(handler)
 
@@ -84,11 +84,12 @@ def make_message(text, chat_id):
                        "text": text})
 
 
+def coalesce(x1, x2):
+    return x2 if x1 is None else x1
+
+
 def get_config(config_file_arg):
-    if config_file_arg is None:
-        config_file = "/stc/sshstomp/sshstomp.conf"
-    else:
-        config_file = os.path.expanduser(config_file_arg)
+    config_file = os.path.expanduser(config_file_arg)
 
     config = configparser.ConfigParser()
     if os.path.exists(config_file):
@@ -102,19 +103,19 @@ def get_config(config_file_arg):
 def process_config(args):
     config = get_config(args.config)
 
-    log_file = args.log_file or config.get('log-file', fallback=None)
-    if args.debug or config.getboolean('debug', fallback=False):
+    log_file = coalesce(args.log_file, config.get('log-file', fallback=None))
+    if coalesce(args.debug, config.getboolean('debug', fallback=False)):
         log_level = logging.DEBUG
     else:
         log_level = logging.INFO
 
     setup_logging(log_level, log_file)
 
-    host = args.host or config['host']
-    port = args.port or config.getint('port')
-    user = args.user or config['user']
-    keyfile = os.path.expanduser(args.key or config['key'])
-    chat_id = args.chat_id or config['chat-id']
+    host = coalesce(args.host, config.get('host'))
+    port = coalesce(args.port, config.getint('port'))
+    user = coalesce(args.user, config.get('user'))
+    keyfile = os.path.expanduser(coalesce(args.key, config.get('key')))
+    chat_id = coalesce(args.chat_id, config.getint('chat-id'))
     return host, port, user, keyfile, chat_id
 
 
@@ -147,7 +148,7 @@ if __name__ == '__main__':
     parser.add_argument('-k', '--key')
     parser.add_argument('-u', '--user')
     parser.add_argument('--chat-id', type=int)
-    parser.add_argument('-c', '--config')
+    parser.add_argument('-c', '--config', default="/etc/sshstomp/sshstomp.conf")
     parser.add_argument('-d', '--debug', action='store_true')
     parser.add_argument('-o', '--log-file')
 
