@@ -1,0 +1,19 @@
+include:
+  - template: Dependency-Scanning.gitlab-ci.yml
+  - template: License-Scanning.gitlab-ci.yml
+  - template: SAST.gitlab-ci.yml
+
+stages:
+  - test
+
+nosetests:
+  stage: test
+  image: python:3.7
+  before_script:
+    - apt-get update -q -y
+    - apt-get install -y python-pip
+    - pip install -r requirements-dev.txt
+  script:
+    - nosetests
+  artifacts:
+    untracked: true

@@ -1,2 +1,2 @@
 paramiko
-git+https://github.com/aragaer/stomp.py.git@heartbeat
+stomp.py==6.1.0
